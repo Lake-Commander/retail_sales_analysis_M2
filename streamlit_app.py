@@ -10,7 +10,13 @@ st.set_page_config(page_title="Retail Sales Dashboard", layout="wide")
 def load_data():
     df = pd.read_csv("Dataset.csv")
     df['Date'] = pd.to_datetime(df['Date'])
-    df['Time'] = pd.to_datetime(df['Time']).dt.time
+
+    # Extract Time from Date (if Date includes time)
+    if df['Date'].dt.hour.isnull().all():
+        df['Time'] = None
+    else:
+        df['Time'] = df['Date'].dt.time
+
     df['Day'] = df['Date'].dt.day_name()
     df['Month'] = df['Date'].dt.month_name()
     return df
