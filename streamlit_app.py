@@ -66,10 +66,10 @@ if not filtered_df.empty:
     col3.metric("Average Rating", f"{avg_rating:.2f} ⭐")
 
     # Charts
-    if "gender" in filtered_df.columns:
-        st.subheader("📊 Gender Distribution")
+    if "product" in filtered_df.columns:
+        st.subheader("📊 Quantity Distribution")
         fig1, ax1 = plt.subplots()
-        sns.countplot(data=filtered_df, x='gender', ax=ax1, palette='Set2')
+        sns.countplot(data=filtered_df, x='Product', ax=ax1, palette='Set2')
         st.pyplot(fig1)
 
     if "date" in filtered_df.columns and "total" in filtered_df.columns:
@@ -80,7 +80,7 @@ if not filtered_df.empty:
         ax2.set_title("Total Sales Over Time")
         st.pyplot(fig2)
 
-    if product_line_col in filtered_df.columns and "total" in filtered_df.columns:
+    if "product" in filtered_df.columns and "total" in filtered_df.columns:
         st.subheader("🏷️ Sales by Product Line")
         product_sales = filtered_df.groupby(product_line_col)['total'].sum().sort_values()
         fig3, ax3 = plt.subplots()
@@ -88,10 +88,10 @@ if not filtered_df.empty:
         ax3.set_xlabel("Total Sales")
         st.pyplot(fig3)
 
-    if "payment" in filtered_df.columns and "rating" in filtered_df.columns:
-        st.subheader("💳 Ratings by Payment Method")
+    if "price" in filtered_df.columns and "rating" in filtered_df.columns:
+        st.subheader("💳 Ratings by Payment")
         fig4, ax4 = plt.subplots()
-        sns.boxplot(data=filtered_df, x='payment', y='rating', palette='pastel', ax=ax4)
+        sns.boxplot(data=filtered_df, x='Price', y='rating', palette='pastel', ax=ax4)
         st.pyplot(fig4)
 else:
     st.warning("No data to display. Please check your filters or dataset.")
