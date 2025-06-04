@@ -1,75 +1,101 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
 
+# Set page config
 st.set_page_config(page_title="Retail Sales Dashboard", layout="wide")
+sns.set_style("whitegrid")
 
 # Load dataset
 @st.cache_data
 def load_data():
     df = pd.read_csv("Dataset.csv")
     df.columns = df.columns.str.strip().str.lower()
-
-    # Convert dates and times
-    if "date" in df.columns:
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df['day'] = df['date'].dt.day_name()
-        df['month'] = df['date'].dt.month_name()
-    if "time" in df.columns:
-        df['time'] = pd.to_datetime(df['time'], errors='coerce').dt.time
-
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    df['month'] = df['date'].dt.month_name()
+    df['day'] = df['date'].dt.day_name()
     return df
 
 df = load_data()
 
-st.title("🛍️ Retail Sales Dashboard")
-st.markdown("Explore key metrics and trends from a retail store's transaction dataset.")
-
 # Sidebar filters
-st.sidebar.header("Filters")
-selected_branch = st.sidebar.multiselect("Select Branch:", df['branch'].unique(), default=df['branch'].unique())
-selected_product = st.sidebar.multiselect("Select Product Line:", df['product line'].unique(), default=df['product line'].unique())
+st.sidebar.title("Filter Data")
+selected_month = st.sidebar.multiselect(
+    "Select Month(s):", options=df['month'].dropna().unique(), default=df['month'].dropna().unique()
+)
 
-filtered_df = df[(df['branch'].isin(selected_branch)) & (df['product line'].isin(selected_product))]
+filtered_df = df[df['month'].isin(selected_month)]
 
-# KPIs
-if not filtered_df.empty:
-    total_sales = filtered_df['total'].sum()
-    gross_income = filtered_df['gross income'].sum()
-    avg_rating = filtered_df['rating'].mean()
+# Title
+st.title("📊 Retail Sales Dashboard")
+st.markdown("Analyze sales data to uncover insights and trends.")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Sales", f"${total_sales:,.2f}")
-    col2.metric("Gross Income", f"${gross_income:,.2f}")
-    col3.metric("Average Rating", f"{avg_rating:.2f} ⭐")
+# KPI section
+total_sales = filtered_df['total'].sum()
+total_orders = filtered_df['orderid'].nunique()
+unique_customers = filtered_df['customerid'].nunique()
 
-    # Charts
-    st.subheader("📊 Quantity Distribution")
-    if 'product' in filtered_df.columns:
-        fig1, ax1 = plt.subplots()
-        sns.countplot(data=filtered_df, x='product', ax=ax1, palette='Set2')
-        st.pyplot(fig1)
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Sales ($)", f"{total_sales:,.2f}")
+col2.metric("Total Orders", total_orders)
+col3.metric("Unique Customers", unique_customers)
 
-    st.subheader("📈 Daily Sales Trend")
-    if "date" in filtered_df.columns:
-        daily_sales = filtered_df.groupby('date')['total'].sum().reset_index()
-        fig2, ax2 = plt.subplots()
-        sns.lineplot(data=daily_sales, x='date', y='total', ax=ax2)
-        ax2.set_title("Total Sales Over Time")
-        st.pyplot(fig2)
+st.markdown("---")
 
-    st.subheader("🏷️ Sales by Product Line")
-    product_sales = filtered_df.groupby('product line')['total'].sum().sort_values()
-    fig3, ax3 = plt.subplots()
-    product_sales.plot(kind='barh', ax=ax3, color='skyblue')
-    ax3.set_xlabel("Total Sales")
-    st.pyplot(fig3)
+# Sales Over Time
+st.subheader("📈 Daily Sales Over Time")
+daily_sales = filtered_df.groupby('date')['total'].sum().reset_index()
 
-    st.subheader("💳 Ratings by Price")
-    if "price" in filtered_df.columns:
-        fig4, ax4 = plt.subplots()
-        sns.boxplot(data=filtered_df, x='price', y='rating', palette='pastel', ax=ax4)
-        st.pyplot(fig4)
-else:
-    st.warning("No data to display. Please check your filters or dataset.")
+fig1, ax1 = plt.subplots(figsize=(10, 4))
+sns.lineplot(data=daily_sales, x='date', y='total', ax=ax1, marker="o")
+ax1.set_title("Daily Sales")
+ax1.set_xlabel("Date")
+ax1.set_ylabel("Total ($)")
+st.pyplot(fig1)
+
+# Top Products
+st.subheader("🏆 Top 10 Products by Quantity Sold")
+top_products = (
+    filtered_df.groupby('product')['quantity'].sum()
+    .sort_values(ascending=False).head(10)
+)
+
+fig2, ax2 = plt.subplots(figsize=(8, 4))
+sns.barplot(x=top_products.values, y=top_products.index, palette="viridis", ax=ax2)
+ax2.set_xlabel("Quantity Sold")
+ax2.set_ylabel("Product")
+st.pyplot(fig2)
+
+# Monthly Sales
+st.subheader("📅 Monthly Sales Distribution")
+month_order = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'
+]
+monthly_sales = (
+    filtered_df.groupby('month')['total'].sum()
+    .reindex(month_order).dropna()
+)
+
+fig3, ax3 = plt.subplots(figsize=(8, 4))
+sns.barplot(x=monthly_sales.index, y=monthly_sales.values, palette="coolwarm", ax=ax3)
+ax3.set_ylabel("Total Sales ($)")
+ax3.set_xlabel("Month")
+ax3.set_title("Monthly Sales")
+plt.xticks(rotation=45)
+st.pyplot(fig3)
+
+# Customer Frequency
+st.subheader("👤 Top 10 Customers by Number of Orders")
+top_customers = filtered_df['customerid'].value_counts().head(10)
+
+fig4, ax4 = plt.subplots(figsize=(8, 4))
+sns.barplot(x=top_customers.values, y=top_customers.index, palette="Set3", ax=ax4)
+ax4.set_xlabel("Number of Orders")
+ax4.set_ylabel("Customer ID")
+st.pyplot(fig4)
+
+# Raw Data (Optional)
+with st.expander("📄 View Raw Data"):
+    st.dataframe(filtered_df)
